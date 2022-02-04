@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState} from 'react';
 import "./Sidebar.css";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import AddIcon from '@mui/icons-material/Add';
+import RemoveIcon from '@mui/icons-material/Remove';
+import EditIcon from '@mui/icons-material/Edit';
 import SidebarChannel from './SidebarChannel';
 import SignalCellularAltIcon from '@mui/icons-material/SignalCellularAlt';
 import InfoIcon from '@mui/icons-material/Info';
@@ -10,8 +12,40 @@ import { Avatar } from '@mui/material';
 import MicIcon from '@mui/icons-material/Mic';
 import HeadsetIcon from '@mui/icons-material/Headset';
 import SettingsIcon from '@mui/icons-material/Settings';
+import { useSelector } from "react-redux";
+import { selectUser } from './features/userSlice';
+import { getAuth } from 'firebase/auth';
+import { auth, db } from './firebase';
+import { onSnapshot, collection, doc, addDoc } from "firebase/firestore"
 
 function Sidebar() {
+    const user = useSelector(selectUser);
+    const [channels, setChannels] = useState([]);
+
+    useEffect(() => {
+        onSnapshot(collection(db, "channels"), (snapshot) => {
+            setChannels(
+                snapshot.docs.map((doc) => ({
+                    id: doc.id,
+                    channel: doc.data()
+                }))
+            )
+        });   
+    }, []);
+
+    const handleAddChannel = async () => {
+        const channelName = prompt("Enter a new channel name");
+
+        if (channelName) {
+            await addDoc(collection(db, "channels"), {
+                channelName: channelName,
+              });
+        }
+    };
+
+    
+
+
     return ( 
         <div className="sidebar">
             <div className='sidebar__top'>
@@ -21,19 +55,20 @@ function Sidebar() {
 
             <div className="sidebar__channels">
                 <div className="sidebar__channelsHeader">
-                    <div className="sidebarHeader">
+                    <div className="sidebar__header">
                     <ExpandMoreIcon/>
                     <h4>Text Channels</h4>
                     </div>
 
-                    <AddIcon className="sidebar__addChannel"/>
+                    <AddIcon onClick={handleAddChannel} className="sidebar__addChannel"/>
                 </div>
 
                 <div className="sidebar__channelsList">
-                    <SidebarChannel />
-                    <SidebarChannel />
-                    <SidebarChannel />
-                    <SidebarChannel />
+                    {channels.map(({ id, channel }) => (
+                        <SidebarChannel 
+                        key={id} id={id} 
+                        channelName={channel.channelName} />
+                    ))}
                 </div>
             </div>
 
@@ -44,7 +79,6 @@ function Sidebar() {
                 />
                 <div className="sidebar__voiceInfo">
                     <h3>Voice Connected</h3>
-                    <p>Stream</p>
                 </div>
 
                 <div className="sidebar__voiceIcons">
@@ -54,10 +88,10 @@ function Sidebar() {
             </div>
 
             <div className="sidebar__profile">
-               <Avatar src='https://res.cloudinary.com/drqgfjtni/image/upload/v1642629799/B0A0563A-E7BD-4CDB-B42A-B0E8D8A10943_ggogvk.jpg'/> 
+               <Avatar onClick={() => auth.signOut()} src={user.photo} /> 
                <div className="sidebar__profileInfo">
-                   <h3>Kweli Hall</h3>
-                   <p>#thisIsMyID</p>
+                    <h3>{user.displayName}</h3>
+                   <p>#{user.uid.substring(0, 5)}</p>
                </div>
 
                <div className="sidebar__profileIcons">
